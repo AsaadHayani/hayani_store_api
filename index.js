@@ -1,5 +1,6 @@
-import express from "express";
 import dotenv from "dotenv";
+dotenv.config();
+import express from "express";
 import connectDB from "./config/db.js";
 import cors from "cors";
 import authRoutes from "./routes/auth.js";
@@ -11,10 +12,7 @@ import errorHandler from "./middleware/errorHandler.js";
 // import seedFaker from "./config/faker.js";
 // seedFaker().then(() => console.log("Fake data inserted!"));
 
-dotenv.config();
-
 const app = express();
-app.use("/uploads", express.static("uploads"));
 
 app.use(cors());
 app.use(express.json());
@@ -30,7 +28,7 @@ app.get("/api/health", (req, res) => res.status(200).json("Ok"));
 
 app.use(errorHandler);
 
-// app.listen(process.env.PORT, () => {
-//   console.log(`http://localhost:${process.env.PORT}`);
-// });
-export default app;
+app.listen(process.env.PORT, () => {
+  console.log(`http://localhost:${process.env.PORT}`);
+});
+// export default app;

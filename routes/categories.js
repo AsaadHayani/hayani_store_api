@@ -1,10 +1,10 @@
 import Category from "../models/Category.js";
 import upload from "../middleware/uploadMiddleware.js";
-import path from "path";
-import fs from "fs";
 import auth from "../middleware/auth.js";
 import express from "express";
 import asyncHandler from "../middleware/asyncHandler.js";
+import uploadToCloudinary from "../middleware/uploadToCloudinary.js";
+import cloudinary from "../config/cloudinary.js";
 
 const router = express.Router();
 
@@ -42,10 +42,27 @@ router.post(
   upload.single("image"),
   asyncHandler(async (req, res) => {
     const { name, description } = req.body;
-    let image;
-    if (req.file) image = req.file.filename;
 
-    const category = await Category.create({ name, description, image });
+    let image = {
+      url: "",
+      public_id: "",
+    };
+
+    if (req.file) {
+      const result = await uploadToCloudinary(req.file.buffer);
+
+      image = {
+        url: result.secure_url,
+        public_id: result.public_id,
+      };
+    }
+
+    const category = await Category.create({
+      name,
+      description,
+      image,
+    });
+
     res.status(201).json(category);
   })
 );
@@ -57,6 +74,7 @@ router.put(
   upload.single("image"),
   asyncHandler(async (req, res) => {
     const { name, description } = req.body;
+
     const category = await Category.findById(req.params.id);
 
     if (!category) {
@@ -64,16 +82,27 @@ router.put(
       throw new Error("Category not found");
     }
 
-    if (req.file) {
-      const oldPath = path.join("uploads", category.image);
-      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-      category.image = req.file.filename;
+    if (name) category.name = name;
+
+    if (description) {
+      category.description = description;
     }
 
-    if (name) category.name = name;
-    if (description) category.description = description;
+    if (req.file) {
+      if (category.image?.public_id) {
+        await cloudinary.uploader.destroy(category.image.public_id);
+      }
+
+      const result = await uploadToCloudinary(req.file.buffer);
+
+      category.image = {
+        url: result.secure_url,
+        public_id: result.public_id,
+      };
+    }
 
     await category.save();
+
     res.status(200).json(category);
   })
 );
@@ -90,14 +119,15 @@ router.delete(
       throw new Error("Category not found");
     }
 
-    if (category.image) {
-      const imagePath = path.join("uploads", category.image);
-      if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
+    if (category.image?.public_id) {
+      await cloudinary.uploader.destroy(category.image.public_id);
     }
 
     await category.deleteOne();
 
-    res.status(200).json(category);
+    res.status(200).json({
+      message: "Category deleted successfully",
+    });
   })
 );
 
@@ -109,15 +139,16 @@ router.delete(
     const categories = await Category.find();
 
     for (const category of categories) {
-      if (category.image) {
-        const imagePath = path.join("uploads", category.image);
-        if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
+      if (category.image?.public_id) {
+        await cloudinary.uploader.destroy(category.image.public_id);
       }
     }
 
-    await Category.deleteMany();
+    await Category.deleteMany({});
 
-    res.status(200).json({ status: "Deleted all categories" });
+    res.status(200).json({
+      message: "All categories deleted",
+    });
   })
 );
 
