@@ -28,7 +28,7 @@ app.get("/api/health", (req, res) => res.status(200).json("Ok"));
 
 app.use(errorHandler);
 
-app.listen(process.env.PORT, () => {
-  console.log(`http://localhost:${process.env.PORT}`);
-});
-// export default app;
+// app.listen(process.env.PORT, () => {
+//   console.log(`http://localhost:${process.env.PORT}`);
+// });
+export default app;
