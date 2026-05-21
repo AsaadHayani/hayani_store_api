@@ -14,24 +14,36 @@ const router = express.Router();
 router.post(
   "/register",
   asyncHandler(async (req, res) => {
-    const user = new User(req.body);
+    const { name, email, password } = req.body;
 
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({
+      email,
+    });
 
     if (existingUser) {
       res.status(400);
       throw new Error("Email already exists");
     }
 
-    await user.save();
+    const user = await User.create({
+      name,
+      email,
+      password,
+    });
 
-    // generate a token for the new user
+    // generate token
     const token = jwt.sign(
-      { userId: user._id, role: user.role },
+      {
+        userId: user._id,
+        role: user.role,
+      },
       process.env.JWT_SECRET
     );
 
-    res.status(201).json({ token, user });
+    res.status(201).json({
+      token,
+      user,
+    });
   })
 );
 
@@ -69,7 +81,7 @@ router.get(
   asyncHandler(async (req, res) => {
     const products = await Product.countDocuments();
     const categories = await Category.countDocuments();
-    const orders = await Order.countDocuments();
+    const orders = await Order.countDocuments({ user: req.user.userId });
     const users = await User.countDocuments();
 
     res.status(200).json({ users, products, categories, orders });
